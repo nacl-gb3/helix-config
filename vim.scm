@@ -533,61 +533,40 @@
   (helix.static.select_textobject_inner)
   (trigger-on-key-callback w-key))
 
-;; Emulate a keypress?
-(define (yank-around-word)
-  (select-around-word)
+(define (yank-impl func)
+  (func)
   (helix.static.yank_main_selection_to_clipboard)
   (helix.static.flip_selections)
   (helix.static.collapse_selection))
+
+;; Emulate a keypress?
+(define (yank-around-word)
+  (yank-impl select-around-word))
 
 ;; Yank inner word - cursor goes to start of yanked word
 (define (yank-inner-word)
-  (select-inner-word)
-  (helix.static.yank_main_selection_to_clipboard)
-  (helix.static.flip_selections)
-  (helix.static.collapse_selection))
+  (yank-impl select-inner-word))
 
 (define (yank-word)
-  (helix.static.extend_next_word_end)
-  (helix.static.yank_main_selection_to_clipboard)
-  (helix.static.flip_selections)
-  (helix.static.collapse_selection))
+  (yank-impl helix.static.extend_next_word_end))
 
 (define (yank-long-word)
-  (helix.static.extend_next_long_word_end)
-  (helix.static.yank_main_selection_to_clipboard)
-  (helix.static.flip_selections)
-  (helix.static.collapse_selection))
+  (yank-impl helix.static.extend_next_long_word_end))
 
 (define (yank-prev-word)
-  (helix.static.extend_prev_word_start)
-  (helix.static.yank_main_selection_to_clipboard)
-  (helix.static.flip_selections)
-  (helix.static.collapse_selection))
+  (yank-impl helix.static.extend_prev_word_start))
 
 (define (yank-prev-long-word)
-  (helix.static.extend_prev_long_word_start)
-  (helix.static.yank_main_selection_to_clipboard)
-  (helix.static.flip_selections)
-  (helix.static.collapse_selection))
+  (yank-impl helix.static.extend_prev_long_word_start))
 
 (define (yank-line-end)
-  (helix.static.extend_to_line_end)
-  (helix.static.yank_main_selection_to_clipboard)
-  (helix.static.flip_selections)
-  (helix.static.collapse_selection))
+  (yank-impl helix.static.extend_to_line_end))
 
 (define (yank-line-start)
-  (helix.static.extend_to_line_start)
-  (helix.static.yank_main_selection_to_clipboard)
-  (helix.static.flip_selections)
-  (helix.static.collapse_selection))
+  (yank-impl helix.static.extend_to_line_start))
 
 (define (yank-line-start-non-whitespace)
-  (helix.static.extend_to_first_nonwhitespace)
-  (helix.static.yank_main_selection_to_clipboard)
-  (helix.static.flip_selections)
-  (helix.static.collapse_selection))
+  (yank-impl helix.static.extend_to_first_nonwhitespace))
 
 (define (evil-yank-line)
   (define start-pos (cursor-position))
