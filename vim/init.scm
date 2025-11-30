@@ -45,8 +45,26 @@
                   (y (y ":evil-yank-line") 
                      ;; TODO: around/inner long word
                      ;; TODO: paragraph, function, comment, test, html tag, etc.
-                     (a (w ":yank-around-word")) 
-                     (i (w ":yank-inner-word"))
+                     (a 
+                       (w ":yank-around-word")
+                       (p ":yank-around-paragraph")
+                       (f ":yank-around-function")
+                       (c ":yank-around-comment")
+                       (e ":yank-around-data-structure")
+                       (x ":yank-around-html-tag")
+                       (t ":yank-around-type-definition")
+                       (T ":yank-around-test")
+                      ) 
+                     (i 
+                       (w ":yank-inner-word")
+                       (p ":yank-inner-paragraph")
+                       (f ":yank-inner-function")
+                       (c ":yank-inner-comment")
+                       (e ":yank-inner-data-structure")
+                       (x ":yank-inner-html-tag")
+                       (t ":yank-inner-type-definition")
+                       (T ":yank-inner-test")
+                     )
                      (w ":yank-word")
                      (W ":yank-long-word")
                      (e ":yank-word")
