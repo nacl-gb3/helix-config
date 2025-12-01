@@ -9,6 +9,11 @@
 
 (require "utils.scm")
 
+;; u
+(define (evil-undo)
+  (helix.static.undo)
+  (helix.static.collapse_selection))
+
 ;; a
 (define (evil-append-mode)
   ;; Move to insert mode
@@ -293,6 +298,7 @@
     (move-right-n (- target-pos start-pos))))
 
 (provide 
+  evil-undo
   evil-append-mode
   move-char-right-same-line
   move-char-left-same-line
