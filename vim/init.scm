@@ -20,6 +20,10 @@
                   (h ":move-char-left-same-line")
                   (k ":move-line-up")
                   (j ":move-line-down")
+                  (right ":move-char-right-same-line")
+                  (left ":move-char-left-same-line")
+                  (up ":move-line-up")
+                  (down ":move-line-down")
                   (f ":evil-find-next-char")
                   (F ":evil-find-prev-char")
                   (t ":evil-find-till-char")
@@ -29,14 +33,15 @@
                   (w ":evil-next-word-start")
                   (e ":evil-next-word-end")
                   (G ":evil-goto-line-or-last")
+                  (V ":visual-line-mode")
                   (A-d "no_op")
                   (A-c "no_op")
                   ;; Selecting the whole file
                   (% "match_brackets")
                   (X "no_op")
                   (A-x "no_op")
-                  (p "paste_after")
-                  (P "paste_before")
+                  (p ":clipboard-paste-after")
+                  (P ":clipboard-paste-before")
                   ;; TODO: More delete things
                   (d (d ":evil-delete-line") 
                      (w ":evil-delete-word")
@@ -114,7 +119,7 @@
                     )
                   )
                   (S ":evil-change-line")
-                  (x "delete_selection_noyank")
+                  (x "delete_selection")
                   ;; TODO: More yank things
                   (y (y ":evil-yank-line") 
                      ;; TODO: around/inner long word
@@ -160,19 +165,19 @@
           ;; Select bindings
           ;; TODO: Rename this to VIS
           (select (a (w ":select-around-word")
-                  (p ":select-around-paragraph")
-                  (f ":select-around-function")
-                  (c ":select-around-comment")
-                  (e ":select-around-data-structure")
-                  (x ":select-around-html-tag")
-                  (t ":select-around-type-definition")
-                  (T ":select-around-test")
-                  ("{" ":select-around-curly")
-                  ("[" ":select-around-square")
-                  ("(" ":select-around-paren")
-                  ("<" ":select-around-arrow")
-                  ("\"" ":select-around-double-quote")
-                  ("'" ":select-around-single-quote")
+                    (p ":select-around-paragraph")
+                    (f ":select-around-function")
+                    (c ":select-around-comment")
+                    (e ":select-around-data-structure")
+                    (x ":select-around-html-tag")
+                    (t ":select-around-type-definition")
+                    (T ":select-around-test")
+                    ("{" ":select-around-curly")
+                    ("[" ":select-around-square")
+                    ("(" ":select-around-paren")
+                    ("<" ":select-around-arrow")
+                    ("\"" ":select-around-double-quote")
+                    ("'" ":select-around-single-quote")
                   )
                   (i (w ":select-inner-word")
                     (p ":select-inner-paragraph")
@@ -191,7 +196,16 @@
                   (h ":extend-char-left-same-line")
                   (l ":extend-char-right-same-line")
                   (j ":extend-line-down")
-                  (k ":extend-line-up"))
+                  (k ":extend-line-up")
+                  (p ":clipboard-paste-after")
+                  (P ":clipboard-paste-before")
+                  (y ":evil-yank-selection")
+                  (left ":extend-char-left-same-line")
+                  (right ":extend-char-right-same-line")
+                  (down ":extend-line-down")
+                  (up ":extend-line-up")
+                  (esc ":exit-visual-line-mode")
+                )
           (insert (C-d "unindent") (C-t "indent"))))
 
 (define (set-vim-keybindings!)
@@ -302,6 +316,7 @@
   evil-prev-long-word-start
   evil-next-long-word-start
   evil-next-long-word-end
+  visual-line-mode
 
   ;; visual motions
   extend-char-right-same-line
@@ -336,8 +351,10 @@
   select-around-single-quote
   select-inner-arrow
   select-around-arrow
+  exit-visual-line-mode
   
   ;; yank motions
+  evil-yank-selection
   yank-around-word
   yank-inner-word
   yank-word

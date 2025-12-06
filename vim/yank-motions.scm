@@ -4,6 +4,7 @@
 (require "utils.scm")
 (require "visual-motions.scm")
 (require "helix/misc.scm")
+(require "helix/editor.scm")
 
 (require-builtin steel/time)
 
@@ -14,6 +15,12 @@
   (helix.static.yank_main_selection_to_clipboard)
   (helix.static.flip_selections)
   (helix.static.collapse_selection))
+
+;; y
+(define (evil-yank-selection)
+  ; (yank-impl no_op)
+  (exit-visual-line-mode)
+)
 
 ;; yaw
 (define (yank-around-word)
@@ -72,6 +79,7 @@
     [(< distance 0) (move-left-n (- distance))]))
 
 (provide
+  evil-yank-selection
   yank-around-word
   yank-inner-word
   yank-word

@@ -297,6 +297,12 @@
   (when (> target-pos start-pos)
     (move-right-n (- target-pos start-pos))))
 
+;; V
+(define (visual-line-mode)
+  (set-visual-line-mode! #t)
+  (helix.static.select_mode)
+  (helix.static.extend_to_line_bounds))
+
 (provide 
   evil-undo
   evil-append-mode
@@ -317,4 +323,5 @@
   evil-prev-long-word-start
   evil-next-long-word-start
   evil-next-long-word-end
+  visual-line-mode
 )

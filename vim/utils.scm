@@ -74,6 +74,21 @@
     [(> distance 0) (move-right-n distance)]
     [(< distance 0) (move-left-n (- distance))]))
 
+(define (extend-to-position target-pos)
+  (define current-pos (cursor-position))
+  (define distance (- target-pos current-pos))
+  (cond
+    [(> distance 0)
+     (let loop ([n distance])
+       (when (> n 0)
+         (helix.static.extend_char_right)
+         (loop (- n 1))))]
+    [(< distance 0)
+     (let loop ([n (- distance)])
+       (when (> n 0)
+         (helix.static.extend_char_left)
+         (loop (- n 1))))]))
+
 (define (skip-whitespace-forward rope)
   (let ([ch (rope-char-at rope (cursor-position))])
     (when (is-whitespace? ch)
@@ -97,29 +112,270 @@
         (func)
         (do-n-times (- n 1) func))))
 
-(define (move-to-char target-ch search-forward?)
+(define (move-to-char target-ch)
   (define rope (get-document-as-slice))
   (define start-pos (cursor-position))
   (define len (rope-len-chars rope))
   
-  (if search-forward?
-      ;; Search forward
-      (let loop ([i 1])
-        (define pos (+ start-pos i))
+  (let loop ([i 1])
+    (define pos (+ start-pos i))
+    (cond
+      [(>= pos len) #f]
+      [else
+       (let ([ch (rope-char-ref rope pos)])
+         (cond
+           [(char=? ch target-ch)
+            ;; Found it - move cursor there
+            (move-right-n i)
+            #t]
+           [else (loop (+ i 1))]))])))
+
+(define *visual-line-mode-box* (box #f))
+
+(define (set-visual-line-mode! val)
+  (set-box! *visual-line-mode-box* val))
+
+(define (is-visual-line-mode?)
+  (unbox *visual-line-mode-box*))
+
+(define (string-blank? str)
+  (let loop ([i 0])
+    (cond
+      [(>= i (string-length str)) #t]
+      [(is-whitespace? (string-ref str i)) (loop (+ i 1))]
+      [else #f])))
+
+(define (line-blank? rope line-idx)
+  (define line (rope->line rope line-idx))
+  (define line-str (rope->string line))
+  (string-blank? line-str))
+
+(define (find-paragraph-start rope cur-line)
+  (let loop ([line-idx cur-line])
+    (cond
+      [(<= line-idx 0) 0]
+      [(line-blank? rope line-idx)
+       (loop (- line-idx 1))]
+      [(line-blank? rope (- line-idx 1)) line-idx]
+      [else (loop (- line-idx 1))])))
+
+(define (find-paragraph-end rope cur-line)
+  (define total-lines (rope-len-lines rope))
+  (let loop ([line-idx cur-line])
+    (cond
+      ;; At end of file
+      [(>= line-idx (- total-lines 1)) (- total-lines 1)]
+      ;; Current line is blank, move down
+      [(line-blank? rope line-idx)
+       (loop (+ line-idx 1))]
+      ;; Next line is blank, we're at end of paragraph
+      [(line-blank? rope (+ line-idx 1)) line-idx]
+      ;; Next line is not blank, keep going down
+      [else (loop (+ line-idx 1))])))
+
+(define (find-blank-lines-end rope start-line)
+  (define total-lines (rope-len-lines rope))
+  (let loop ([line-idx start-line])
+    (cond
+      ;; At end of file
+      [(>= line-idx (- total-lines 1)) (- total-lines 1)]
+      ;; Current line is blank, keep going
+      [(line-blank? rope line-idx) (loop (+ line-idx 1))]
+      ;; Found non-blank line, return previous line
+      [else (- line-idx 1)])))
+
+(define bracket-pairs
+  '((#\{ . #\})
+    (#\( . #\))
+    (#\[ . #\])
+    (#\< . #\>)))
+
+;; Bracket characters we support
+(define bracket-chars '(#\{ #\( #\[ #\<))
+
+;; Check if character is a bracket we care about
+(define (is-target-bracket? ch target-ch)
+  (char=? ch target-ch))
+
+;; Find enclosing bracket pair using Helix's match_brackets
+;; Returns (open-pos . close-pos) or #f
+(define (find-enclosing-pair-with-match rope cur-pos target-open-ch)
+  (define len (rope-len-chars rope))
+  (define cur-char (rope-char-ref rope cur-pos))
+  
+  ;; First check if we're already on the target bracket
+  (if (is-target-bracket? cur-char target-open-ch)
+      (begin
+        ;; We're on the bracket - use match_brackets
+        (define start-pos (cursor-position))
+        (helix.static.match_brackets)
+        (define match-pos (cursor-position))
+        
+        ;; Move back to original position
+        (move-to-position cur-pos)
+        
+        ;; Return pair if we found a match
+        (if (not (= start-pos match-pos))
+            (if (< start-pos match-pos)
+                (cons start-pos match-pos)
+                (cons match-pos start-pos))
+            #f))
+      ;; Not on the bracket, search backward
+      (let loop ([pos (- cur-pos 1)])
         (cond
-          [(>= pos len) #f]
+          [(< pos 0) #f]
           [else
-           (let ([ch (rope-char-at rope pos)])
-             (cond
-               [(not ch) #f]
-               [(char=? ch #\newline) #f]  ; Stop at newline
-               [(char=? ch target-ch)
-                ;; Found it - move cursor there
-                (move-right-n i)
-                #t]
-               [else (loop (+ i 1))]))]))
-      ;; Search backward (not currently used)
-      #f))
+           (let ([ch (rope-char-ref rope pos)])
+             (if (is-target-bracket? ch target-open-ch)
+                 ;; Found the target bracket - check if we're inside its pair
+                 (begin
+                   ;; Move to this bracket
+                   (move-to-position pos)
+                   (define bracket-pos (cursor-position))
+                   
+                   ;; Use Helix's match_brackets to find the pair
+                   (helix.static.match_brackets)
+                   (define match-pos (cursor-position))
+                   
+                   ;; Move back to original position
+                   (move-to-position cur-pos)
+                   
+                   ;; Check if match is after our cursor (meaning we're inside)
+                   (if (and (not (= bracket-pos match-pos))  ; Matched something
+                            (> match-pos cur-pos))            ; Match is after cursor
+                       (cons bracket-pos match-pos)           ; Found it!
+                       (loop (- pos 1))))                     ; Keep searching
+                 ;; Not the target bracket, keep searching
+                 (loop (- pos 1))))]))))
+
+(define (find-next-bracket rope cur-pos target-ch)
+  (define len (rope-len-chars rope))
+  
+  (let loop ([pos cur-pos])
+    (cond
+      [(>= pos len) #f]
+      [else
+       (let ([ch (rope-char-ref rope pos)])
+         (if (char=? ch target-ch)
+             pos
+             (loop (+ pos 1))))])))
+
+;; Find bracket pair with forward search fallback
+(define (find-bracket-pair rope cur-pos target-open-ch)
+  ;; First try to find enclosing pair
+  (let ([enclosing (find-enclosing-pair-with-match rope cur-pos target-open-ch)])
+    (if enclosing
+        enclosing
+        ;; Not inside pair - search forward and check
+        (let ([next-pos (find-next-bracket rope cur-pos target-open-ch)])
+          (if next-pos
+              (begin
+                ;; Move to the bracket
+                (move-to-position next-pos)
+                (define bracket-pos (cursor-position))
+                
+                ;; Use match_brackets to find pair
+                (helix.static.match_brackets)
+                (define match-pos (cursor-position))
+                
+                ;; Move back to original
+                (move-to-position cur-pos)
+                
+                ;; Return pair if we found a match
+                (if (not (= bracket-pos match-pos))
+                    (cons bracket-pos match-pos)
+                    #f))
+              #f)))))
+
+;; Get matching closing bracket
+(define (get-closing-bracket open-ch)
+  (let ([pair (assoc open-ch bracket-pairs)])
+    (if pair (cdr pair) #f)))
+
+;; Get matching opening bracket
+(define (get-opening-bracket close-ch)
+  (let loop ([pairs bracket-pairs])
+    (cond
+      [(null? pairs) #f]
+      [(char=? (cdar pairs) close-ch) (caar pairs)]
+      [else (loop (cdr pairs))])))
+
+;; Check if character is an opening bracket
+(define (is-opening-bracket? ch)
+  (and ch (assoc ch bracket-pairs)))
+
+;; Check if character is a closing bracket
+(define (is-closing-bracket? ch)
+  (and ch (get-opening-bracket ch)))
+
+;; Find matching closing bracket position, returns #f if not found
+;; Handles nested brackets correctly
+(define (find-matching-close rope start-pos open-ch)
+  (define close-ch (get-closing-bracket open-ch))
+  (define len (rope-len-chars rope))
+  
+  (displayln (string-append "find-matching-close from pos " (number->string start-pos)))
+  
+  (let loop ([pos (+ start-pos 1)] [depth 1] [iter 0])
+    (cond
+      [(>= pos len) 
+       (displayln "Reached end of file, no match found")
+       #f]
+      [(> iter 1000)
+       (displayln "Too many iterations, stopping")
+       #f]
+      [else
+       (let ([ch (rope-char-ref rope pos)])
+         (when (and (< iter 20) (or (char=? ch open-ch) (char=? ch close-ch)))
+           (displayln (string-append "  pos " (number->string pos) ": " (string ch) " depth=" (number->string depth))))
+         (cond
+           [(char=? ch open-ch) (loop (+ pos 1) (+ depth 1) (+ iter 1))]
+           [(char=? ch close-ch)
+            (if (= depth 1)
+                (begin
+                  (displayln (string-append "Found matching close at " (number->string pos)))
+                  pos)
+                (loop (+ pos 1) (- depth 1) (+ iter 1)))]
+           [else (loop (+ pos 1) depth (+ iter 1))]))])))
+
+;; Find matching opening bracket position, returns #f if not found
+;; Handles nested brackets correctly
+(define (find-matching-open rope start-pos close-ch)
+  (define open-ch (get-opening-bracket close-ch))
+  
+  (let loop ([pos (- start-pos 1)] [depth 1])
+    (cond
+      [(< pos 0) #f]
+      [else
+       (let ([ch (rope-char-ref rope pos)])
+         (cond
+           [(char=? ch close-ch) (loop (- pos 1) (+ depth 1))]
+           [(char=? ch open-ch)
+            (if (= depth 1)
+                pos
+                (loop (- pos 1) (- depth 1)))]
+           [else (loop (- pos 1) depth)]))])))
+
+;; Check if cursor is inside a bracket pair
+;; Returns (open-pos . close-pos) or #f
+(define (find-enclosing-pair rope cur-pos open-ch)
+  ;; Search backwards for opening bracket
+  (let loop-back ([pos (- cur-pos 1)])
+    (cond
+      [(< pos 0) #f]
+      [else
+       (let ([ch (rope-char-ref rope pos)])
+         (cond
+           ;; Found potential opening bracket
+           [(char=? ch open-ch)
+            (let ([match-pos (find-matching-close rope pos open-ch)])
+              (if (and match-pos (>= match-pos cur-pos))
+                  ;; Found enclosing pair
+                  (cons pos match-pos)
+                  ;; Keep searching backwards
+                  (loop-back (- pos 1))))]
+           [else (loop-back (- pos 1))]))])))
+
 
 (provide
   get-document-as-slice
@@ -138,4 +394,22 @@
   has-real-selection?
   move-to-position
   move-to-char
+  set-visual-line-mode!
+  is-visual-line-mode?
+  extend-to-position
+  string-blank?
+  line-blank?
+  find-paragraph-start
+  find-paragraph-end
+  find-blank-lines-end
+  bracket-pairs
+  get-closing-bracket
+  get-opening-bracket
+  is-opening-bracket?
+  is-closing-bracket?
+  find-matching-close
+  find-matching-open
+  find-enclosing-pair
+  find-next-bracket
+  find-bracket-pair
 )
