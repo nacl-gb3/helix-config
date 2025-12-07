@@ -7,7 +7,7 @@
 (require-builtin helix/core/text)
 
 (require "utils.scm")
-(require "vim/visual-motions.scm")
+(require "visual-motions.scm")
 
 ;; dd
 (define (evil-delete-line)

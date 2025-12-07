@@ -7,7 +7,7 @@
 
 (require-builtin helix/core/text)
 
-(require "vim/visual-motions.scm")
+(require "visual-motions.scm")
 
 (define (change-impl func)
   (func)
