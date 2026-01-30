@@ -16,11 +16,15 @@
   (helix.static.flip_selections)
   (helix.static.collapse_selection))
 
-;; y
-(define (evil-yank-selection)
-  ; (yank-impl no_op)
-  (exit-visual-line-mode)
-)
+;; y (select)
+(define (vim-yank-selection)
+  ;; TODO: figure out what to put in place of no_op
+  ; to not break everything
+  ;; (yank-impl no_op)
+  (helix.static.yank_main_selection_to_clipboard)
+  (helix.static.flip_selections)
+  (helix.static.collapse_selection)
+  (exit-visual-line-mode))
 
 ;; yaw
 (define (yank-around-word)
@@ -59,35 +63,38 @@
   (yank-impl helix.static.extend_to_first_nonwhitespace))
 
 ;; yy
-(define (evil-yank-line)
+(define (vim-yank-line)
   (define start-pos (cursor-position))
+  (define count (editor-count))
+  (when (> count 1)
+    (set-editor-count! (- count 1))
+    (helix.static.extend_line_down)
+  )
   (helix.static.extend_to_line_bounds)
   (helix.static.yank_main_selection_to_clipboard)
 
-    ;; Flash the selection briefly (if highlight_selections exists)
+  ;; Flash the selection briefly (if highlight_selections exists)
   ;; This provides visual feedback
   ;; (when (defined? 'helix.static.highlight_selections)
   ;;   (helix.static.highlight_selections))
-  
+
   (helix.static.normal_mode)
   (helix.static.collapse_selection)
-  
+
   (define current-pos (cursor-position))
   (define distance (- start-pos current-pos))
   (cond
     [(> distance 0) (move-right-n distance)]
     [(< distance 0) (move-left-n (- distance))]))
 
-(provide
-  evil-yank-selection
-  yank-around-word
-  yank-inner-word
-  yank-word
-  yank-long-word
-  yank-prev-word
-  yank-prev-long-word
-  yank-line-end
-  yank-line-start
-  yank-line-start-non-whitespace
-  evil-yank-line
-)
+(provide vim-yank-selection
+         yank-around-word
+         yank-inner-word
+         yank-word
+         yank-long-word
+         yank-prev-word
+         yank-prev-long-word
+         yank-line-end
+         yank-line-start
+         yank-line-start-non-whitespace
+         vim-yank-line)

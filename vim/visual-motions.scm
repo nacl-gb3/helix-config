@@ -41,8 +41,8 @@
 (define (extend-line-up)
   (helix.static.extend_line_up)
   (extend-line-up-impl)
-  (when (is-visual-line-mode?) (helix.static.extend_to_line_bounds))
-)
+  (when (is-visual-line-mode?)
+    (helix.static.extend_to_line_bounds)))
 
 (define (extend-line-down-impl)
   (define pos (cursor-position))
@@ -59,8 +59,8 @@
 (define (extend-line-down)
   (helix.static.extend_line_down)
   (extend-line-down-impl)
-  (when (is-visual-line-mode?) (helix.static.extend_to_line_bounds))
-)
+  (when (is-visual-line-mode?)
+    (helix.static.extend_to_line_bounds)))
 
 (define (select-around-impl key)
   (helix.static.select_textobject_around)
@@ -83,28 +83,26 @@
   (define rope (get-document-as-slice))
   (define cur-pos (cursor-position))
   (define cur-line (rope-char->line rope cur-pos))
-  
+
   ;; Find paragraph boundaries
   (define para-start-line (find-paragraph-start rope cur-line))
   (define para-end-line (find-paragraph-end rope cur-line))
-  
+
   ;; Find end of trailing blank lines
   (define blank-end-line (find-blank-lines-end rope (+ para-end-line 1)))
-  
+
   ;; Use the blank line end if there are trailing blanks, otherwise use paragraph end
-  (define actual-end-line (if (> blank-end-line para-end-line)
-                              blank-end-line
-                              para-end-line))
-  
+  (define actual-end-line (if (> blank-end-line para-end-line) blank-end-line para-end-line))
+
   ;; Convert line numbers to character positions
   (define start-char (rope-line->char rope para-start-line))
   (define end-line-start (rope-line->char rope actual-end-line))
-  
+
   ;; Get the end of the last line
   (define end-line-rope (rope->line rope actual-end-line))
   (define end-line-len (rope-len-chars end-line-rope))
   (define end-char (+ end-line-start end-line-len))
-  
+
   ;; Move to start and extend to end
   (move-to-position start-char)
   (extend-to-position (- end-char 1)))
@@ -114,20 +112,20 @@
   (define rope (get-document-as-slice))
   (define cur-pos (cursor-position))
   (define cur-line (rope-char->line rope cur-pos))
-  
+
   ;; Find paragraph boundaries
   (define para-start-line (find-paragraph-start rope cur-line))
   (define para-end-line (find-paragraph-end rope cur-line))
-  
+
   ;; Convert line numbers to character positions
   (define start-char (rope-line->char rope para-start-line))
   (define end-line-start (rope-line->char rope para-end-line))
-  
+
   ;; Get the end of the last line in the paragraph
   (define end-line-rope (rope->line rope para-end-line))
   (define end-line-len (rope-len-chars end-line-rope))
   (define end-char (+ end-line-start end-line-len))
-  
+
   ;; Move to start and extend to end
   (move-to-position start-char)
   (extend-to-position (- end-char 1)))
@@ -189,7 +187,7 @@
 (define (select-inner-bracket open-ch)
   (define rope (get-document-as-slice))
   (define cur-pos (cursor-position))
-  
+
   (let ([pair (find-bracket-pair rope cur-pos open-ch)])
     (when pair
       (let ([open-pos (car pair)]
@@ -206,7 +204,6 @@
               (move-to-position (+ close-pos 1))
               (extend-to-position (- open-pos 1))))))))
 
-
 ;; Select around bracket - enhanced with forward search
 ;; va{
 ;; va[
@@ -217,7 +214,7 @@
 (define (select-around-bracket open-ch)
   (define rope (get-document-as-slice))
   (define cur-pos (cursor-position))
-  
+
   (let ([pair (find-bracket-pair rope cur-pos open-ch)])
     (when pair
       (let ([open-pos (car pair)]
@@ -234,10 +231,10 @@
 (define (select-inner-quote quote-ch)
   (define rope (get-document-as-slice))
   (define start-pos (cursor-position))
-  
+
   (helix.static.select_textobject_inner)
   (trigger-on-key-callback (string->key-event (string quote-ch)))
-  
+
   ;; If didn't work, search forward
   (when (= start-pos (cursor-position))
     (let loop ([i 1])
@@ -246,7 +243,7 @@
         (let ([ch (rope-char-ref rope pos)])
           (if (char=? ch quote-ch)
               (begin
-                (move-right-n (+ i 1))  ; Move past the quote
+                (move-right-n (+ i 1)) ; Move past the quote
                 (helix.static.select_textobject_inner)
                 (trigger-on-key-callback (string->key-event (string quote-ch))))
               (loop (+ i 1))))))))
@@ -254,10 +251,10 @@
 (define (select-around-quote quote-ch)
   (define rope (get-document-as-slice))
   (define start-pos (cursor-position))
-  
+
   (helix.static.select_textobject_around)
   (trigger-on-key-callback (string->key-event (string quote-ch)))
-  
+
   ;; If didn't work, search forward
   (when (= start-pos (cursor-position))
     (let loop ([i 1])
@@ -266,7 +263,7 @@
         (let ([ch (rope-char-ref rope pos)])
           (if (char=? ch quote-ch)
               (begin
-                (move-right-n (+ i 1))  ; Move past the quote
+                (move-right-n (+ i 1)) ; Move past the quote
                 (helix.static.select_textobject_around)
                 (trigger-on-key-callback (string->key-event (string quote-ch))))
               (loop (+ i 1))))))))
@@ -308,44 +305,42 @@
 (define (select-around-arrow)
   (select-around-bracket #\<))
 
-(define (exit-visual-line-mode) 
+(define (exit-visual-line-mode)
   (when is-visual-line-mode?
     (set-visual-line-mode! #f))
   (helix.static.collapse_selection)
   (helix.static.normal_mode))
 
-(provide 
-  extend-char-right-same-line
-  extend-char-left-same-line
-  extend-line-up
-  extend-line-down
-  select-around-word
-  select-inner-word
-  select-around-paragraph
-  select-inner-paragraph
-  select-around-function
-  select-inner-function
-  select-around-comment
-  select-inner-comment
-  select-around-data-structure
-  select-inner-data-structure
-  select-around-html-tag
-  select-inner-html-tag
-  select-around-type-definition
-  select-inner-type-definition
-  select-around-test
-  select-inner-test
-  select-inner-curly
-  select-around-curly
-  select-inner-paren
-  select-around-paren
-  select-inner-square
-  select-around-square
-  select-inner-double-quote
-  select-around-double-quote
-  select-inner-single-quote
-  select-around-single-quote
-  select-inner-arrow
-  select-around-arrow
-  exit-visual-line-mode
-)
+(provide extend-char-right-same-line
+         extend-char-left-same-line
+         extend-line-up
+         extend-line-down
+         select-around-word
+         select-inner-word
+         select-around-paragraph
+         select-inner-paragraph
+         select-around-function
+         select-inner-function
+         select-around-comment
+         select-inner-comment
+         select-around-data-structure
+         select-inner-data-structure
+         select-around-html-tag
+         select-inner-html-tag
+         select-around-type-definition
+         select-inner-type-definition
+         select-around-test
+         select-inner-test
+         select-inner-curly
+         select-around-curly
+         select-inner-paren
+         select-around-paren
+         select-inner-square
+         select-around-square
+         select-inner-double-quote
+         select-around-double-quote
+         select-inner-single-quote
+         select-around-single-quote
+         select-inner-arrow
+         select-around-arrow
+         exit-visual-line-mode)

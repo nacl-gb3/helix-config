@@ -96,11 +96,13 @@
       (skip-whitespace-forward rope))))
 
 (define (move-left-n n)
+  (set-editor-count! 1)
   (when (> n 0)
     (helix.static.move_char_left)
     (move-left-n (- n 1))))
 
 (define (move-right-n n)
+  (set-editor-count! 1)
   (when (> n 0)
     (helix.static.move_char_right)
     (move-right-n (- n 1))))
