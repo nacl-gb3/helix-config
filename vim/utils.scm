@@ -17,40 +17,34 @@
       #f))
 
 (define (is-whitespace? ch)
-  (and ch
-       (or (char=? ch #\space)
-           (char=? ch #\tab)
-           (char=? ch #\newline)
-           (char=? ch #\return))))
+  (and ch (or (char=? ch #\space) (char=? ch #\tab) (char=? ch #\newline) (char=? ch #\return))))
 
 (define (is-alphabetic? ch)
-  (and ch
-       (or (and (char>=? ch #\a) (char<=? ch #\z))
-           (and (char>=? ch #\A) (char<=? ch #\Z)))))
+  (and ch (or (and (char>=? ch #\a) (char<=? ch #\z)) (and (char>=? ch #\A) (char<=? ch #\Z)))))
 
 (define (is-numeric? ch)
   (and ch (char>=? ch #\0) (char<=? ch #\9)))
 
 (define (is-word-char? ch)
-  (and ch
-       (or (is-alphabetic? ch)
-           (is-numeric? ch)
-           (char=? ch #\_))))
+  (and ch (or (is-alphabetic? ch) (is-numeric? ch) (char=? ch #\_))))
 
 (define (is-punctuation? ch)
-  (and ch
-       (not (is-whitespace? ch))
-       (not (is-word-char? ch))))
+  (and ch (not (is-whitespace? ch)) (not (is-word-char? ch))))
 
 (define (is-bracket? ch)
   (and ch
-       (or (char=? ch #\{) (char=? ch #\})
-           (char=? ch #\() (char=? ch #\))
-           (char=? ch #\[) (char=? ch #\])
-           (char=? ch #\") (char=? ch #\")
-           (char=? ch #\') (char=? ch #\')
-           (char=? ch #\<) (char=? ch #\>)
-           )))
+       (or (char=? ch #\{)
+           (char=? ch #\})
+           (char=? ch #\()
+           (char=? ch #\))
+           (char=? ch #\[)
+           (char=? ch #\])
+           (char=? ch #\")
+           (char=? ch #\")
+           (char=? ch #\')
+           (char=? ch #\')
+           (char=? ch #\<)
+           (char=? ch #\>))))
 
 (define (get-selection-range)
   ;; Try to get selection info from editor
@@ -95,17 +89,37 @@
       (helix.static.move_char_right)
       (skip-whitespace-forward rope))))
 
+;;@doc
+;; moves left n times and sets editor count to 1
 (define (move-left-n n)
   (set-editor-count! 1)
   (when (> n 0)
     (helix.static.move_char_left)
     (move-left-n (- n 1))))
 
+;;@doc
+;; moves right n times and sets editor count to 1
 (define (move-right-n n)
   (set-editor-count! 1)
   (when (> n 0)
     (helix.static.move_char_right)
     (move-right-n (- n 1))))
+
+;;@doc
+;; extends left n times and sets editor count to 1
+(define (extend-left-n n)
+  (set-editor-count! 1)
+  (when (> n 0)
+    (helix.static.extend_char_left)
+    (extend-left-n (- n 1))))
+
+;;@doc
+;; extends right n times and sets editor count to 1
+(define (extend-right-n n)
+  (set-editor-count! 1)
+  (when (> n 0)
+    (helix.static.extend_char_right)
+    (extend-right-n (- n 1))))
 
 (define (do-n-times n func)
   (if (= n 0)
@@ -118,7 +132,7 @@
   (define rope (get-document-as-slice))
   (define start-pos (cursor-position))
   (define len (rope-len-chars rope))
-  
+
   (let loop ([i 1])
     (define pos (+ start-pos i))
     (cond
@@ -156,8 +170,7 @@
   (let loop ([line-idx cur-line])
     (cond
       [(<= line-idx 0) 0]
-      [(line-blank? rope line-idx)
-       (loop (- line-idx 1))]
+      [(line-blank? rope line-idx) (loop (- line-idx 1))]
       [(line-blank? rope (- line-idx 1)) line-idx]
       [else (loop (- line-idx 1))])))
 
@@ -168,8 +181,7 @@
       ;; At end of file
       [(>= line-idx (- total-lines 1)) (- total-lines 1)]
       ;; Current line is blank, move down
-      [(line-blank? rope line-idx)
-       (loop (+ line-idx 1))]
+      [(line-blank? rope line-idx) (loop (+ line-idx 1))]
       ;; Next line is blank, we're at end of paragraph
       [(line-blank? rope (+ line-idx 1)) line-idx]
       ;; Next line is not blank, keep going down
@@ -186,11 +198,7 @@
       ;; Found non-blank line, return previous line
       [else (- line-idx 1)])))
 
-(define bracket-pairs
-  '((#\{ . #\})
-    (#\( . #\))
-    (#\[ . #\])
-    (#\< . #\>)))
+(define bracket-pairs '((#\{ . #\}) (#\( . #\)) (#\[ . #\]) (#\< . #\>)))
 
 ;; Bracket characters we support
 (define bracket-chars '(#\{ #\( #\[ #\<))
@@ -204,7 +212,7 @@
 (define (find-enclosing-pair-with-match rope cur-pos target-open-ch)
   (define len (rope-len-chars rope))
   (define cur-char (rope-char-ref rope cur-pos))
-  
+
   ;; First check if we're already on the target bracket
   (if (is-target-bracket? cur-char target-open-ch)
       (begin
@@ -212,10 +220,10 @@
         (define start-pos (cursor-position))
         (helix.static.match_brackets)
         (define match-pos (cursor-position))
-        
+
         ;; Move back to original position
         (move-to-position cur-pos)
-        
+
         ;; Return pair if we found a match
         (if (not (= start-pos match-pos))
             (if (< start-pos match-pos)
@@ -234,25 +242,25 @@
                    ;; Move to this bracket
                    (move-to-position pos)
                    (define bracket-pos (cursor-position))
-                   
+
                    ;; Use Helix's match_brackets to find the pair
                    (helix.static.match_brackets)
                    (define match-pos (cursor-position))
-                   
+
                    ;; Move back to original position
                    (move-to-position cur-pos)
-                   
+
                    ;; Check if match is after our cursor (meaning we're inside)
-                   (if (and (not (= bracket-pos match-pos))  ; Matched something
-                            (> match-pos cur-pos))            ; Match is after cursor
-                       (cons bracket-pos match-pos)           ; Found it!
-                       (loop (- pos 1))))                     ; Keep searching
+                   (if (and (not (= bracket-pos match-pos)) ; Matched something
+                            (> match-pos cur-pos)) ; Match is after cursor
+                       (cons bracket-pos match-pos) ; Found it!
+                       (loop (- pos 1)))) ; Keep searching
                  ;; Not the target bracket, keep searching
                  (loop (- pos 1))))]))))
 
 (define (find-next-bracket rope cur-pos target-ch)
   (define len (rope-len-chars rope))
-  
+
   (let loop ([pos cur-pos])
     (cond
       [(>= pos len) #f]
@@ -275,14 +283,14 @@
                 ;; Move to the bracket
                 (move-to-position next-pos)
                 (define bracket-pos (cursor-position))
-                
+
                 ;; Use match_brackets to find pair
                 (helix.static.match_brackets)
                 (define match-pos (cursor-position))
-                
+
                 ;; Move back to original
                 (move-to-position cur-pos)
-                
+
                 ;; Return pair if we found a match
                 (if (not (= bracket-pos match-pos))
                     (cons bracket-pos match-pos)
@@ -292,7 +300,9 @@
 ;; Get matching closing bracket
 (define (get-closing-bracket open-ch)
   (let ([pair (assoc open-ch bracket-pairs)])
-    (if pair (cdr pair) #f)))
+    (if pair
+        (cdr pair)
+        #f)))
 
 ;; Get matching opening bracket
 (define (get-opening-bracket close-ch)
@@ -315,12 +325,14 @@
 (define (find-matching-close rope start-pos open-ch)
   (define close-ch (get-closing-bracket open-ch))
   (define len (rope-len-chars rope))
-  
+
   (displayln (string-append "find-matching-close from pos " (number->string start-pos)))
-  
-  (let loop ([pos (+ start-pos 1)] [depth 1] [iter 0])
+
+  (let loop ([pos (+ start-pos 1)]
+             [depth 1]
+             [iter 0])
     (cond
-      [(>= pos len) 
+      [(>= pos len)
        (displayln "Reached end of file, no match found")
        #f]
       [(> iter 1000)
@@ -329,7 +341,12 @@
       [else
        (let ([ch (rope-char-ref rope pos)])
          (when (and (< iter 20) (or (char=? ch open-ch) (char=? ch close-ch)))
-           (displayln (string-append "  pos " (number->string pos) ": " (string ch) " depth=" (number->string depth))))
+           (displayln (string-append "  pos "
+                                     (number->string pos)
+                                     ": "
+                                     (string ch)
+                                     " depth="
+                                     (number->string depth))))
          (cond
            [(char=? ch open-ch) (loop (+ pos 1) (+ depth 1) (+ iter 1))]
            [(char=? ch close-ch)
@@ -344,8 +361,9 @@
 ;; Handles nested brackets correctly
 (define (find-matching-open rope start-pos close-ch)
   (define open-ch (get-opening-bracket close-ch))
-  
-  (let loop ([pos (- start-pos 1)] [depth 1])
+
+  (let loop ([pos (- start-pos 1)]
+             [depth 1])
     (cond
       [(< pos 0) #f]
       [else
@@ -378,40 +396,39 @@
                   (loop-back (- pos 1))))]
            [else (loop-back (- pos 1))]))])))
 
-
-(provide
-  get-document-as-slice
-  rope-char-at
-  is-whitespace?
-  is-alphabetic?
-  is-numeric?
-  is-word-char?
-  is-punctuation?
-  skip-whitespace-forward
-  move-left-n
-  move-right-n
-  do-n-times
-  is-bracket?
-  get-selection-range
-  has-real-selection?
-  move-to-position
-  move-to-char
-  set-visual-line-mode!
-  is-visual-line-mode?
-  extend-to-position
-  string-blank?
-  line-blank?
-  find-paragraph-start
-  find-paragraph-end
-  find-blank-lines-end
-  bracket-pairs
-  get-closing-bracket
-  get-opening-bracket
-  is-opening-bracket?
-  is-closing-bracket?
-  find-matching-close
-  find-matching-open
-  find-enclosing-pair
-  find-next-bracket
-  find-bracket-pair
-)
+(provide get-document-as-slice
+         rope-char-at
+         is-whitespace?
+         is-alphabetic?
+         is-numeric?
+         is-word-char?
+         is-punctuation?
+         skip-whitespace-forward
+         move-left-n
+         move-right-n
+         extend-left-n
+         extend-right-n
+         do-n-times
+         is-bracket?
+         get-selection-range
+         has-real-selection?
+         move-to-position
+         move-to-char
+         set-visual-line-mode!
+         is-visual-line-mode?
+         extend-to-position
+         string-blank?
+         line-blank?
+         find-paragraph-start
+         find-paragraph-end
+         find-blank-lines-end
+         bracket-pairs
+         get-closing-bracket
+         get-opening-bracket
+         is-opening-bracket?
+         is-closing-bracket?
+         find-matching-close
+         find-matching-open
+         find-enclosing-pair
+         find-next-bracket
+         find-bracket-pair)

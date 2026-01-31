@@ -88,7 +88,7 @@
     (cond
       [(equal? char #\newline) void]
       ;; Move right n times
-      [(equal? char next-char) (do-n-times i helix.static.move_char_right)]
+      [(equal? char next-char) (move-right-n i)]
       [else (loop (+ i 1) next-char)]))
 
   (define (find-repeat count next-char)
@@ -117,8 +117,8 @@
     (define char (rope-char-ref doc (- pos i)))
     (cond
       [(equal? char #\newline) void]
-      ;; Move right n times
-      [(equal? char next-char) (do-n-times i helix.static.move_char_left)]
+      ;; Move left n times
+      [(equal? char next-char) (move-left-n i)]
       [else (loop (+ i 1) next-char)]))
 
   (define (find-repeat count next-char)
@@ -149,7 +149,7 @@
       [(equal? char #\newline) void]
       ;; Move right n times
       [(equal? char next-char)
-       (do-n-times i helix.static.move_char_right)
+       (move-right-n i)
        (helix.static.move_char_left)]
       [else (loop (+ i 1) next-char)]))
 
@@ -161,7 +161,7 @@
        (define doc (get-document-as-slice))
        (define char (rope-char-ref doc pos))
        (cond
-         [(equal? char next-char) (do-n-times 1 helix.static.move_char_right)])
+         [(equal? char next-char) (move-right-n 1)])
        (loop 0 next-char)
        (find-till-repeat (- count 1) next-char)]))
 
@@ -186,7 +186,7 @@
       [(equal? char #\newline) void]
       ;; Move right n times
       [(equal? char next-char)
-       (do-n-times i helix.static.move_char_left)
+       (move-left-n i)
        (helix.static.move_char_right)]
       [else (loop (+ i 1) next-char)]))
 
@@ -198,7 +198,7 @@
        (define doc (get-document-as-slice))
        (define char (rope-char-ref doc pos))
        (cond
-         [(equal? char next-char) (do-n-times 1 helix.static.move_char_left)])
+         [(equal? char next-char) (move-left-n 1)])
        (loop 0 next-char)
        (find-till-repeat (- count 1) next-char)]))
 
@@ -208,25 +208,28 @@
 ;; stored in the , register, so whatever it takes...
 ;; ,
 (define (vim-repeat-last-find)
+  (define count (editor-count))
   (define find-macro (to-string (first (register->value #\,))))
+  (helix.echo find-macro)
   (define action (string-ref find-macro 1))
   (define char (string-ref find-macro 2))
   (cond
-    [(equal? action #\f) (vim-find-next-char-impl char 1)]
-    [(equal? action #\F) (vim-find-prev-char-impl char 1)]
-    [(equal? action #\t) (vim-find-till-char-impl char 1)]
-    [(equal? action #\T) (vim-till-prev-char-impl char 1)]))
+    [(equal? action #\f) (vim-find-next-char-impl char count)]
+    [(equal? action #\F) (vim-find-prev-char-impl char count)]
+    [(equal? action #\t) (vim-find-till-char-impl char count)]
+    [(equal? action #\T) (vim-till-prev-char-impl char count)]))
 
 ;; ;
 (define (vim-reverse-last-find)
+  (define count (editor-count))
   (define find-macro (to-string (first (register->value #\,))))
   (define action (string-ref find-macro 1))
   (define char (string-ref find-macro 2))
   (cond
-    [(equal? action #\f) (vim-find-prev-char-impl char 1)]
-    [(equal? action #\F) (vim-find-next-char-impl char 1)]
-    [(equal? action #\t) (vim-till-prev-char-impl char 1)]
-    [(equal? action #\T) (vim-find-till-char-impl char 1)]))
+    [(equal? action #\f) (vim-find-prev-char-impl char count)]
+    [(equal? action #\F) (vim-find-next-char-impl char count)]
+    [(equal? action #\t) (vim-till-prev-char-impl char count)]
+    [(equal? action #\T) (vim-find-till-char-impl char count)]))
 
 ;; G or (line-number)G
 (define (vim-goto-line-or-last)

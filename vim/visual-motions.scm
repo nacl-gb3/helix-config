@@ -324,7 +324,7 @@
     (cond
       [(equal? char #\newline) void]
       ;; Move right n times
-      [(equal? char next-char) (do-n-times i helix.static.extend_char_right)]
+      [(equal? char next-char) (extend-right-n)]
       [else (loop (+ i 1) next-char)]))
 
   (define (find-repeat count next-char)
@@ -354,7 +354,7 @@
     (cond
       [(equal? char #\newline) void]
       ;; Move right n times
-      [(equal? char next-char) (do-n-times i helix.static.extend_char_left)]
+      [(equal? char next-char) (extend-left-n i)]
       [else (loop (+ i 1) next-char)]))
 
   (define (find-repeat count next-char)
@@ -385,7 +385,7 @@
       [(equal? char #\newline) void]
       ;; Move right n times
       [(equal? char next-char)
-       (do-n-times i helix.static.extend_char_right)
+       (extend-right-n i)
        (helix.static.extend_char_left)]
       [else (loop (+ i 1) next-char)]))
 
@@ -397,7 +397,7 @@
        (define doc (get-document-as-slice))
        (define char (rope-char-ref doc pos))
        (cond
-         [(equal? char next-char) (do-n-times 1 helix.static.extend_char_right)])
+         [(equal? char next-char) (extend-right-n 1)])
        (loop 0 next-char)
        (find-till-repeat (- count 1) next-char)]))
 
@@ -422,7 +422,7 @@
       [(equal? char #\newline) void]
       ;; Move right n times
       [(equal? char next-char)
-       (do-n-times i helix.static.extend_char_left)
+       (extend-left-n i)
        (helix.static.extend_char_right)]
       [else (loop (+ i 1) next-char)]))
 
@@ -434,7 +434,7 @@
        (define doc (get-document-as-slice))
        (define char (rope-char-ref doc pos))
        (cond
-         [(equal? char next-char) (do-n-times 1 helix.static.extend_char_left)])
+         [(equal? char next-char) (extend-left-n 1)])
        (loop 0 next-char)
        (find-till-repeat (- count 1) next-char)]))
 
@@ -442,25 +442,27 @@
 
 ;; ,
 (define (select-repeat-last-find)
+  (define count (editor-count))
   (define find-macro (to-string (first (register->value #\,))))
   (define action (string-ref find-macro 1))
   (define char (string-ref find-macro 2))
   (cond
-    [(equal? action #\f) (select-find-next-char-impl char 1)]
-    [(equal? action #\F) (select-find-prev-char-impl char 1)]
-    [(equal? action #\t) (select-find-till-char-impl char 1)]
-    [(equal? action #\T) (select-till-prev-char-impl char 1)]))
+    [(equal? action #\f) (select-find-next-char-impl char count)]
+    [(equal? action #\F) (select-find-prev-char-impl char count)]
+    [(equal? action #\t) (select-find-till-char-impl char count)]
+    [(equal? action #\T) (select-till-prev-char-impl char count)]))
 
 ;; ;
 (define (select-reverse-last-find)
+  (define count (editor-count))
   (define find-macro (to-string (first (register->value #\,))))
   (define action (string-ref find-macro 1))
   (define char (string-ref find-macro 2))
   (cond
-    [(equal? action #\f) (select-find-prev-char-impl char 1)]
-    [(equal? action #\F) (select-find-next-char-impl char 1)]
-    [(equal? action #\t) (select-till-prev-char-impl char 1)]
-    [(equal? action #\T) (select-find-till-char-impl char 1)]))
+    [(equal? action #\f) (select-find-prev-char-impl char count)]
+    [(equal? action #\F) (select-find-next-char-impl char count)]
+    [(equal? action #\t) (select-till-prev-char-impl char count)]
+    [(equal? action #\T) (select-find-till-char-impl char count)]))
 
 (define (exit-visual-line-mode)
   (when is-visual-line-mode?
