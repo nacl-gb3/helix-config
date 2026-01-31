@@ -5,6 +5,7 @@
 (require "key-emulation.scm")
 (require "helix/misc.scm")
 (require "helix/components.scm")
+(require "helix/editor.scm")
 
 (require-builtin steel/time)
 
@@ -305,6 +306,162 @@
 (define (select-around-arrow)
   (select-around-bracket #\<))
 
+;; f(char)
+(define (select-find-next-char)
+  (define count (editor-count))
+  (on-key-callback (lambda (key-event)
+                     (define char (on-key-event-char key-event))
+                     (when char
+                       (select-find-next-char-impl char count)
+                       ;; NOTE: this will break if default key-bind is changed
+                       (set-register! #\, (list (string #\@ #\f char)))))))
+
+(define (select-find-next-char-impl char count)
+  (define (loop i next-char)
+    (define pos (cursor-position))
+    (define doc (get-document-as-slice))
+    (define char (rope-char-ref doc (+ i pos)))
+    (cond
+      [(equal? char #\newline) void]
+      ;; Move right n times
+      [(equal? char next-char) (do-n-times i helix.static.extend_char_right)]
+      [else (loop (+ i 1) next-char)]))
+
+  (define (find-repeat count next-char)
+    (cond
+      [(zero? count) void]
+      [else
+       (loop 1 next-char)
+       (find-repeat (- count 1) next-char)]))
+
+  (find-repeat count char))
+
+;; F(char)
+(define (select-find-prev-char)
+  (define count (editor-count))
+  (on-key-callback (lambda (key-event)
+                     (define char (on-key-event-char key-event))
+                     (when char
+                       (select-find-prev-char-impl char count)
+                       ;; NOTE: this will break if default key-bind is changed
+                       (set-register! #\, (list (string #\@ #\F char)))))))
+
+(define (select-find-prev-char-impl char count)
+  (define (loop i next-char)
+    (define pos (cursor-position))
+    (define doc (get-document-as-slice))
+    (define char (rope-char-ref doc (- pos i)))
+    (cond
+      [(equal? char #\newline) void]
+      ;; Move right n times
+      [(equal? char next-char) (do-n-times i helix.static.extend_char_left)]
+      [else (loop (+ i 1) next-char)]))
+
+  (define (find-repeat count next-char)
+    (cond
+      [(zero? count) void]
+      [else
+       (loop 1 next-char)
+       (find-repeat (- count 1) next-char)]))
+
+  (find-repeat count char))
+
+;; t(char)
+(define (select-find-till-char)
+  (define count (editor-count))
+  (on-key-callback (lambda (key-event)
+                     (define char (on-key-event-char key-event))
+                     (when char
+                       (select-find-till-char-impl char count)
+                       ;; NOTE: this will break if default key-bind is changed
+                       (set-register! #\, (list (string #\@ #\t char)))))))
+
+(define (select-find-till-char-impl char count)
+  (define (loop i next-char)
+    (define pos (cursor-position))
+    (define doc (get-document-as-slice))
+    (define char (rope-char-ref doc (+ i pos)))
+    (cond
+      [(equal? char #\newline) void]
+      ;; Move right n times
+      [(equal? char next-char)
+       (do-n-times i helix.static.extend_char_right)
+       (helix.static.extend_char_left)]
+      [else (loop (+ i 1) next-char)]))
+
+  (define (find-till-repeat count next-char)
+    (cond
+      [(zero? count) void]
+      [else
+       (define pos (cursor-position))
+       (define doc (get-document-as-slice))
+       (define char (rope-char-ref doc pos))
+       (cond
+         [(equal? char next-char) (do-n-times 1 helix.static.extend_char_right)])
+       (loop 0 next-char)
+       (find-till-repeat (- count 1) next-char)]))
+
+  (find-till-repeat count char))
+
+;; T(char)
+(define (select-till-prev-char)
+  (define count (editor-count))
+  (on-key-callback (lambda (key-event)
+                     (define char (on-key-event-char key-event))
+                     (when char
+                       (select-till-prev-char-impl char count)
+                       ;; NOTE: this will break if default key-bind is changed
+                       (set-register! #\, (list (string #\@ #\T char)))))))
+
+(define (select-till-prev-char-impl char count)
+  (define (loop i next-char)
+    (define pos (cursor-position))
+    (define doc (get-document-as-slice))
+    (define char (rope-char-ref doc (- pos i)))
+    (cond
+      [(equal? char #\newline) void]
+      ;; Move right n times
+      [(equal? char next-char)
+       (do-n-times i helix.static.extend_char_left)
+       (helix.static.extend_char_right)]
+      [else (loop (+ i 1) next-char)]))
+
+  (define (find-till-repeat count next-char)
+    (cond
+      [(zero? count) void]
+      [else
+       (define pos (cursor-position))
+       (define doc (get-document-as-slice))
+       (define char (rope-char-ref doc pos))
+       (cond
+         [(equal? char next-char) (do-n-times 1 helix.static.extend_char_left)])
+       (loop 0 next-char)
+       (find-till-repeat (- count 1) next-char)]))
+
+  (find-till-repeat count char))
+
+;; ,
+(define (select-repeat-last-find)
+  (define find-macro (to-string (first (register->value #\,))))
+  (define action (string-ref find-macro 1))
+  (define char (string-ref find-macro 2))
+  (cond
+    [(equal? action #\f) (select-find-next-char-impl char 1)]
+    [(equal? action #\F) (select-find-prev-char-impl char 1)]
+    [(equal? action #\t) (select-find-till-char-impl char 1)]
+    [(equal? action #\T) (select-till-prev-char-impl char 1)]))
+
+;; ;
+(define (select-reverse-last-find)
+  (define find-macro (to-string (first (register->value #\,))))
+  (define action (string-ref find-macro 1))
+  (define char (string-ref find-macro 2))
+  (cond
+    [(equal? action #\f) (select-find-prev-char-impl char 1)]
+    [(equal? action #\F) (select-find-next-char-impl char 1)]
+    [(equal? action #\t) (select-till-prev-char-impl char 1)]
+    [(equal? action #\T) (select-find-till-char-impl char 1)]))
+
 (define (exit-visual-line-mode)
   (when is-visual-line-mode?
     (set-visual-line-mode! #f))
@@ -343,4 +500,10 @@
          select-around-single-quote
          select-inner-arrow
          select-around-arrow
+         select-find-next-char
+         select-find-prev-char
+         select-find-till-char
+         select-till-prev-char
+         select-repeat-last-find
+         select-reverse-last-find
          exit-visual-line-mode)

@@ -1,14 +1,14 @@
 (require (prefix-in helix. "helix/commands.scm"))
 (require (prefix-in helix.static. "helix/static.scm"))
 
+(require "utils.scm")
+(require "key-emulation.scm")
 (require "helix/misc.scm")
 (require "helix/components.scm")
 (require "helix/editor.scm")
 
 (require-builtin steel/time)
 (require-builtin helix/core/text)
-
-(require "utils.scm")
 
 ;; u
 (define (vim-undo)
@@ -72,12 +72,15 @@
 
 ;; f(char)
 (define (vim-find-next-char)
+  (define count (editor-count))
   (on-key-callback (lambda (key-event)
                      (define char (on-key-event-char key-event))
                      (when char
-                       (vim-find-next-char-impl char)))))
+                       (vim-find-next-char-impl char count)
+                       ;; NOTE: this will break if default key-bind is changed
+                       (set-register! #\, (list (string #\@ #\f char)))))))
 
-(define (vim-find-next-char-impl char)
+(define (vim-find-next-char-impl char count)
   (define (loop i next-char)
     (define pos (cursor-position))
     (define doc (get-document-as-slice))
@@ -94,23 +97,20 @@
       [else
        (loop 1 next-char)
        (find-repeat (- count 1) next-char)]))
-  (define count (editor-count))
 
   (find-repeat count char))
-;; TODO: for testing
-;; (helix.echo (to-string '('(string #\@ #\f char))))
-;; TODO: this doesn't work
-;; NOTE: this will break if predicted key-bind is not chosen
-;;(set-register! #\f '((string #\@ #\f char))))
 
 ;; F(char)
 (define (vim-find-prev-char)
+  (define count (editor-count))
   (on-key-callback (lambda (key-event)
                      (define char (on-key-event-char key-event))
                      (when char
-                       (vim-find-prev-char-impl char)))))
+                       (vim-find-prev-char-impl char count)
+                       ;; NOTE: this will break if default key-bind is changed
+                       (set-register! #\, (list (string #\@ #\F char)))))))
 
-(define (vim-find-prev-char-impl char)
+(define (vim-find-prev-char-impl char count)
   (define (loop i next-char)
     (define pos (cursor-position))
     (define doc (get-document-as-slice))
@@ -127,21 +127,20 @@
       [else
        (loop 1 next-char)
        (find-repeat (- count 1) next-char)]))
-  (define count (editor-count))
 
   (find-repeat count char))
-;; TODO: this doesn't work
-;; NOTE: this will break if predicted key-bind is not chosen
-;; (set-register! #\f '((string #\@ #\F char))))
 
 ;; t(char)
 (define (vim-find-till-char)
+  (define count (editor-count))
   (on-key-callback (lambda (key-event)
                      (define char (on-key-event-char key-event))
                      (when char
-                       (vim-find-till-char-impl char)))))
+                       (vim-find-till-char-impl char count)
+                       ;; NOTE: this will break if default key-bind is changed
+                       (set-register! #\, (list (string #\@ #\t char)))))))
 
-(define (vim-find-till-char-impl char)
+(define (vim-find-till-char-impl char count)
   (define (loop i next-char)
     (define pos (cursor-position))
     (define doc (get-document-as-slice))
@@ -165,21 +164,20 @@
          [(equal? char next-char) (do-n-times 1 helix.static.move_char_right)])
        (loop 0 next-char)
        (find-till-repeat (- count 1) next-char)]))
-  (define count (editor-count))
 
   (find-till-repeat count char))
-;; TODO: this doesn't work
-;; NOTE: this will break if predicted key-bind is not chosen
-;; (set-register! #\f '((string #\@ #\t char))))
 
 ;; T(char)
 (define (vim-till-prev-char)
+  (define count (editor-count))
   (on-key-callback (lambda (key-event)
                      (define char (on-key-event-char key-event))
                      (when char
-                       (vim-till-prev-char-impl char)))))
+                       (vim-till-prev-char-impl char count)
+                       ;; NOTE: this will break if default key-bind is changed
+                       (set-register! #\, (list (string #\@ #\T char)))))))
 
-(define (vim-till-prev-char-impl char)
+(define (vim-till-prev-char-impl char count)
   (define (loop i next-char)
     (define pos (cursor-position))
     (define doc (get-document-as-slice))
@@ -203,12 +201,32 @@
          [(equal? char next-char) (do-n-times 1 helix.static.move_char_left)])
        (loop 0 next-char)
        (find-till-repeat (- count 1) next-char)]))
-  (define count (editor-count))
 
   (find-till-repeat count char))
-;; TODO: this doesn't work
-;; NOTE: this will break if predicted key-bind is not chosen
-;; (set-register! #\f '((string #\@ #\T char))))
+
+;; NOTE: this is midly hacky, but the goal is to run the macro
+;; stored in the , register, so whatever it takes...
+;; ,
+(define (vim-repeat-last-find)
+  (define find-macro (to-string (first (register->value #\,))))
+  (define action (string-ref find-macro 1))
+  (define char (string-ref find-macro 2))
+  (cond
+    [(equal? action #\f) (vim-find-next-char-impl char 1)]
+    [(equal? action #\F) (vim-find-prev-char-impl char 1)]
+    [(equal? action #\t) (vim-find-till-char-impl char 1)]
+    [(equal? action #\T) (vim-till-prev-char-impl char 1)]))
+
+;; ;
+(define (vim-reverse-last-find)
+  (define find-macro (to-string (first (register->value #\,))))
+  (define action (string-ref find-macro 1))
+  (define char (string-ref find-macro 2))
+  (cond
+    [(equal? action #\f) (vim-find-prev-char-impl char 1)]
+    [(equal? action #\F) (vim-find-next-char-impl char 1)]
+    [(equal? action #\t) (vim-till-prev-char-impl char 1)]
+    [(equal? action #\T) (vim-find-till-char-impl char 1)]))
 
 ;; G or (line-number)G
 (define (vim-goto-line-or-last)
@@ -409,6 +427,8 @@
          vim-find-prev-char
          vim-find-till-char
          vim-till-prev-char
+         vim-repeat-last-find
+         vim-reverse-last-find
          vim-goto-line-or-last
          vim-next-word-start
          vim-next-word-end
