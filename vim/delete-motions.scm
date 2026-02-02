@@ -9,6 +9,13 @@
 (require "utils.scm")
 (require "visual-motions.scm")
 
+;; TODO: rethink everything about how repetition is implemented in delete and yank
+
+(define (delete-impl func)
+  (func)
+  (helix.clipboard-yank)
+  (helix.static.delete_selection))
+
 ;; x (d in select-mode?)
 (define (vim-delete-selection)
   (helix.clipboard-yank)
@@ -18,81 +25,55 @@
 ;; dd
 (define (vim-delete-line)
   (define count (editor-count))
-  (do-n-times count vim-delete-line-impl))
-
-(define (vim-delete-line-impl)
+  (when (> count 1)
+    (set-editor-count! (- count 1))
+    (helix.static.extend_line_down))
   (helix.static.extend_to_line_bounds)
   (helix.clipboard-yank)
   (helix.static.delete_selection))
 
-;; TODO: broken - cuts off too much text in certain scenarios
-;; nacl's TODO: question why we can't just use helix's regular extend function
+;; (orignal comment: broken - cuts off too much text in certain scenarios)
+;; nacl -- I may have fixed this but can't know for sure unless
+;; getting specific examples
 ;; dw
 (define (vim-delete-word)
-  (define count (editor-count))
-  (do-n-times count vim-delete-word-impl))
-
-(define (vim-delete-word-impl)
-  (define pos (cursor-position))
+  (vim-extend-next-word-start)
   (set-editor-count! 1)
-  (helix.static.move_next_word_end)
-  (define new-pos (cursor-position))
-  (when (> (- new-pos pos) 1)
-    (helix.static.extend_char_right))
+  (helix.static.extend_char_left)
   (helix.clipboard-yank)
   (helix.static.delete_selection))
 
-;; TODO: broken - cuts off too much text in certain scenarios
-;; nacl's TODO: question why we can't just use helix's regular extend function
+;; (orignal comment: broken - cuts off too much text in certain scenarios)
+;; nacl -- I may have fixed this but can't know for sure unless
+;; getting specific examples
 ;; dW
 (define (vim-delete-long-word)
-  (define count (editor-count))
-  (do-n-times count vim-delete-long-word-impl))
-
-(define (vim-delete-long-word-impl)
-  (define pos (cursor-position))
+  (vim-extend-next-long-word-start)
   (set-editor-count! 1)
-  (helix.static.extend_next_long_word_end)
-  (define new-pos (cursor-position))
-  (when (> (- new-pos pos) 1)
-    (helix.static.extend_char_right))
+  (helix.static.extend_char_left)
   (helix.clipboard-yank)
   (helix.static.delete_selection))
 
+;; this may not 100% work
 ;; db
 (define (vim-delete-prev-word)
-  (define count (editor-count))
-  (do-n-times count vim-delete-prev-word-impl))
+  (vim-delete-prev-word-impl helix.static.extend_prev_word_start))
 
-(define (vim-delete-prev-word-impl)
-  (define pos (cursor-position))
-  (set-editor-count! 1)
-  (helix.static.extend_prev_word_start)
-  (define new-pos (cursor-position))
-  (when (> (- new-pos pos) 1)
-    (helix.static.extend_char_right))
-  (helix.clipboard-yank)
-  (helix.static.delete_selection))
-
+;; this may not 100% work
 ;; dB
 (define (vim-delete-prev-long-word)
-  (define count (editor-count))
-  (do-n-times count vim-delete-prev-long-word-impl))
+  (vim-delete-prev-word-impl helix.static.extend_prev_long_word_start))
 
-(define (vim-delete-prev-long-word-impl)
+(define (vim-delete-prev-word-impl func)
   (define pos (cursor-position))
-  (set-editor-count! 1)
-  (helix.static.extend_prev_long_word_start)
-  (define new-pos (cursor-position))
-  (when (> (- new-pos pos) 1)
-    (helix.static.extend_char_right))
-  (helix.clipboard-yank)
-  (helix.static.delete_selection))
-
-(define (delete-impl func)
   (func)
-  (helix.clipboard-yank)
-  (helix.static.delete_selection))
+  (define start-pos (cursor-position))
+  (move-to-position (- pos 1))
+  (extend-to-position start-pos)
+  (define new-pos (cursor-position))
+  (when (not (equal? new-pos pos))
+    (helix.clipboard-yank)
+    (helix.static.delete_selection)))
 
 ;; de
 (define (vim-delete-word-end)
@@ -118,7 +99,7 @@
 (define (vim-delete-inner-word)
   (delete-impl select-inner-word))
 
-;; TODO: figure out what is up with this
+;; TODO: finish implementing this
 ;; daW
 ;; (define (vim-delete-around-long-word)
 ;;   (select-around-word)

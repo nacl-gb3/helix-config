@@ -10,6 +10,8 @@
 
 (require-builtin helix/core/text)
 
+;; TODO: implement for yank commands using custom implementations
+
 (define (yank-impl func)
   (func)
   (helix.static.yank_main_selection_to_clipboard)
@@ -18,12 +20,7 @@
 
 ;; y (select)
 (define (vim-yank-selection)
-  ;; TODO: figure out what to put in place of no_op
-  ; to not break everything
-  ;; (yank-impl no_op)
-  (helix.static.yank_main_selection_to_clipboard)
-  (helix.static.flip_selections)
-  (helix.static.collapse_selection)
+  (yank-impl helix.static.no_op)
   (exit-visual-line-mode))
 
 ;; yaw
@@ -36,11 +33,21 @@
 
 ;; yw
 (define (yank-word)
-  (yank-impl helix.static.extend_next_word_end))
+  (vim-extend-next-word-start)
+  (set-editor-count! 1)
+  (helix.static.extend_char_left)
+  (helix.static.yank_main_selection_to_clipboard)
+  (helix.static.flip_selections)
+  (helix.static.collapse_selection))
 
 ;; yW
 (define (yank-long-word)
-  (yank-impl helix.static.extend_next_long_word_end))
+  (vim-extend-next-word-start)
+  (set-editor-count! 1)
+  (helix.static.extend_char_left)
+  (helix.static.yank_main_selection_to_clipboard)
+  (helix.static.flip_selections)
+  (helix.static.collapse_selection))
 
 ;; yb
 (define (yank-prev-word)

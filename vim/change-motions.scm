@@ -1,7 +1,7 @@
 (require (prefix-in helix. "helix/commands.scm"))
 (require (prefix-in helix.static. "helix/static.scm"))
 
-(require "delete-motions.scm")
+(require "helix/editor.scm")
 
 (require-builtin steel/time)
 
@@ -63,6 +63,7 @@
 (define (vim-change-inner-word)
   (change-impl select-inner-word))
 
+;; TODO: finish implementing this
 ;; caW
 ;; (define (vim-change-around-long-word)
 ;;   (select-around-word)

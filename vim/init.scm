@@ -165,10 +165,11 @@
                   ;; NOTE: this implementation uses the , register
                   ;; so be careful with saving other things there
                   ("," ":vim-repeat-last-find")
-                  (";" ":vim-reverse-last-find")
-                  ("=" ":reflow"))
+                  (";" ":vim-reverse-last-find"))
+          ;; TODO: make full "reflow mode"
+          ;; ("=" ":reflow"))
           ;; Select bindings
-          ;; TODO: Rename this to VIS
+          ;; TODO: Rename this to VIS (nacl TODO: figure out if I care)
           (select (a (w ":select-around-word")
                      (p ":select-around-paragraph")
                      (f ":select-around-function")
@@ -201,6 +202,8 @@
                   (l ":extend-char-right-same-line")
                   (j ":extend-line-down")
                   (k ":extend-line-up")
+                  (w ":vim-extend-next-word-start")
+                  (W ":vim-extend-next-long-word-start")
                   (p ":clipboard-paste-after")
                   (P ":clipboard-paste-before")
                   (y ":vim-yank-selection")
@@ -228,7 +231,7 @@
                   (down ":extend-line-down")
                   (up ":extend-line-up")
                   (esc ":exit-visual-line-mode"))
-          (insert (C-d "unindent") (C-t "indent"))))
+          (insert (C-d "unindent") (C-t "indent") (esc ":vim-exit-insert-mode"))))
 
 (define (set-vim-keybindings!)
   (add-global-keybinding vim-keybindings))
@@ -347,15 +350,18 @@
          vim-next-long-word-end
          vim-goto-next-paragraph
          vim-goto-prev-paragraph
-         vim-extend-to-next-paragraph
-         vim-extend-to-prev-paragraph
          visual-line-mode
+         vim-exit-insert-mode
 
          ;; visual motions
          extend-char-right-same-line
          extend-char-left-same-line
          extend-line-up
          extend-line-down
+         vim-extend-next-word-start
+         vim-extend-next-long-word-start
+         vim-extend-to-next-paragraph
+         vim-extend-to-prev-paragraph
          select-around-word
          select-inner-word
          select-around-paragraph

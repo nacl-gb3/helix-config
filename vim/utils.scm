@@ -396,6 +396,117 @@
                   (loop-back (- pos 1))))]
            [else (loop-back (- pos 1))]))])))
 
+(define (get-next-word-start func)
+  (define rope (get-document-as-slice))
+  (define start-pos (cursor-position))
+  (define len (rope-len-chars rope))
+
+  (define cur-char (rope-char-at rope start-pos))
+  (define on-whitespace (is-whitespace? cur-char))
+  (define on-word (is-word-char? cur-char))
+  (define on-punct (is-punctuation? cur-char))
+
+  (define (skip-whitespace pos)
+    (let loop ([p pos])
+      (let ([ch (rope-char-at rope p)])
+        (cond
+          [(>= p len) len]
+          [(is-whitespace? ch) (loop (+ p 1))]
+          [else p]))))
+
+  (define (find-next-word-start pos)
+    (cond
+      [(>= pos len) len]
+
+      ;; On whitespace: skip to first non-whitespace
+      [on-whitespace (skip-whitespace pos)]
+
+      ;; On word char: skip word chars, then skip whitespace
+      [on-word
+       (let* ([after-word (let loop ([p pos])
+                            (let ([ch (rope-char-at rope p)])
+                              (cond
+                                [(>= p len) len]
+                                [(is-word-char? ch) (loop (+ p 1))]
+                                [else p])))]
+              [after-space (skip-whitespace after-word)])
+         after-space)]
+
+      ;; On punctuation: skip punctuation, then skip whitespace
+      [on-punct
+       (let* ([after-punct (let loop ([p pos])
+                             (let ([ch (rope-char-at rope p)])
+                               (cond
+                                 [(>= p len) len]
+                                 [(is-punctuation? ch) (loop (+ p 1))]
+                                 [else p])))]
+              [after-space (skip-whitespace after-punct)])
+         after-space)]
+
+      [else pos]))
+
+  (define target-pos (find-next-word-start start-pos))
+  (when (> target-pos start-pos)
+    (func (- target-pos start-pos))))
+
+;; TODO: try to move helper functions out of above and below functions
+; if possible
+
+(define (get-next-long-word-start func)
+  (define rope (get-document-as-slice))
+  (define start-pos (cursor-position))
+  (define len (rope-len-chars rope))
+
+  (define cur-char (rope-char-at rope start-pos))
+  (define on-whitespace (is-whitespace? cur-char))
+
+  (define (skip-whitespace pos)
+    (let loop ([p pos])
+      (let ([ch (rope-char-at rope p)])
+        (cond
+          [(>= p len) len]
+          ;; Stop if we hit a newline (empty line boundary)
+          [(and (is-whitespace? ch) (not (char=? ch #\newline))) (loop (+ p 1))]
+          [(char=? ch #\newline)
+           ;; Move past the newline, but stop if next line is empty or has content
+           (let ([next-pos (+ p 1)])
+             (if (>= next-pos len)
+                 len
+                 (let ([next-ch (rope-char-at rope next-pos)])
+                   (if (char=? next-ch #\newline)
+                       ;; Empty line - stop here
+                       next-pos
+                       ;; Continue skipping whitespace on this line
+                       (if (and next-ch (is-whitespace? next-ch) (not (char=? next-ch #\newline)))
+                           (loop next-pos)
+                           next-pos)))))]
+          [else p]))))
+
+  (define (skip-non-whitespace pos)
+    (let loop ([p pos])
+      (let ([ch (rope-char-at rope p)])
+        (cond
+          [(>= p len) len]
+          [(is-whitespace? ch) p]
+          [else (loop (+ p 1))]))))
+
+  (define (find-next-word-start pos)
+    (cond
+      [(>= pos len) len]
+
+      ;; On whitespace: skip to first non-whitespace
+      [on-whitespace (skip-whitespace pos)]
+
+      ;; On non-whitespace: skip to end, then skip whitespace
+      [else
+       (let* ([after-word (skip-non-whitespace pos)]
+              [after-space (skip-whitespace after-word)])
+         after-space)]))
+
+  (define target-pos (find-next-word-start start-pos))
+  (when (> target-pos start-pos)
+    (func (- target-pos start-pos))))
+
 (provide get-document-as-slice
          rope-char-at
          is-whitespace?
@@ -431,4 +542,6 @@
          find-matching-open
          find-enclosing-pair
          find-next-bracket
-         find-bracket-pair)
+         find-bracket-pair
+         get-next-word-start
+         get-next-long-word-start)

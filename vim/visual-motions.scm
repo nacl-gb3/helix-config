@@ -63,6 +63,32 @@
   (when (is-visual-line-mode?)
     (helix.static.extend_to_line_bounds)))
 
+;; w
+(define (vim-extend-next-word-start)
+  (define count (editor-count))
+  (do-n-times count vim-extend-next-word-start-impl))
+
+(define (vim-extend-next-word-start-impl)
+  (get-next-word-start extend-right-n))
+
+;; W
+(define (vim-extend-next-long-word-start)
+  (define count (editor-count))
+  (do-n-times count vim-extend-next-long-word-start-impl))
+
+(define (vim-extend-next-long-word-start-impl)
+  (get-next-long-word-start extend-right-n))
+
+;; { (select)
+(define (vim-extend-to-prev-paragraph)
+  (helix.static.extend_to_line_bounds)
+  (helix.static.goto_prev_paragraph))
+
+;; } (select)
+(define (vim-extend-to-next-paragraph)
+  (helix.static.extend_to_line_bounds)
+  (helix.static.goto_next_paragraph))
+
 (define (select-around-impl key)
   (helix.static.select_textobject_around)
   (trigger-on-key-callback key))
@@ -468,12 +494,24 @@
   (when is-visual-line-mode?
     (set-visual-line-mode! #f))
   (helix.static.collapse_selection)
-  (helix.static.normal_mode))
+  (helix.static.normal_mode)
+  (define pos (cursor-position))
+  (define char (rope-char-ref (get-document-as-slice) pos))
+  (define prev-char (rope-char-ref (get-document-as-slice) (- pos 1)))
+  (when char
+    (if (equal? #\newline char)
+        ;; i don't want to import normal motions
+        (unless (equal? #\newline prev-char)
+          (helix.static.move_char_left)))))
 
 (provide extend-char-right-same-line
          extend-char-left-same-line
          extend-line-up
          extend-line-down
+         vim-extend-next-word-start
+         vim-extend-next-long-word-start
+         vim-extend-to-next-paragraph
+         vim-extend-to-prev-paragraph
          select-around-word
          select-inner-word
          select-around-paragraph
