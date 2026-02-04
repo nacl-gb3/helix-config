@@ -13,6 +13,11 @@
 
 ;; l
 (define (extend-char-right-same-line)
+  (define count (editor-count))
+  (do-n-times count extend-char-right-same-line-impl))
+
+(define (extend-char-right-same-line-impl)
+  (set-editor-count! 1)
   (define pos (cursor-position))
   (define char (rope-char-ref (get-document-as-slice) (+ 1 pos)))
   (when char
@@ -21,6 +26,11 @@
 
 ;; h
 (define (extend-char-left-same-line)
+  (define count (editor-count))
+  (do-n-times count extend-char-left-same-line-impl))
+
+(define (extend-char-left-same-line-impl)
+  (set-editor-count! 1)
   (define pos (cursor-position))
   (define char (rope-char-ref (get-document-as-slice) (- pos 1)))
   (when char
@@ -40,7 +50,7 @@
   (define char (rope-char-ref doc pos))
   (when char
     (when (char=? #\newline char)
-      (extend-char-left-same-line))))
+      (extend-char-left-same-line-impl))))
 
 ;; j
 (define (extend-line-down)
@@ -55,7 +65,7 @@
   (define char (rope-char-ref doc pos))
   (when char
     (when (char=? #\newline char)
-      (extend-char-left-same-line))))
+      (extend-char-left-same-line-impl))))
 
 ;; w
 (define (vim-extend-next-word-start)

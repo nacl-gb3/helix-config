@@ -20,10 +20,19 @@
   ;; Move to insert mode
   (helix.static.insert_mode)
   (helix.static.collapse_selection)
-  (helix.static.move_char_right))
+  (define pos (cursor-position))
+  (define char (rope-char-ref (get-document-as-slice) pos))
+  (when char
+    (unless (equal? #\newline char)
+      (helix.static.move_char_right))))
 
 ;; l
 (define (move-char-right-same-line)
+  (define count (editor-count))
+  (do-n-times count move-char-right-same-line-impl))
+
+(define (move-char-right-same-line-impl)
+  (set-editor-count! 1)
   (define pos (cursor-position))
   (define char (rope-char-ref (get-document-as-slice) (+ 1 pos)))
   (when char
@@ -32,6 +41,11 @@
 
 ;; h
 (define (move-char-left-same-line)
+  (define count (editor-count))
+  (do-n-times count move-char-left-same-line-impl))
+
+(define (move-char-left-same-line-impl)
+  (set-editor-count! 1)
   (define pos (cursor-position))
   (define char (rope-char-ref (get-document-as-slice) (- pos 1)))
   (when char
@@ -49,7 +63,7 @@
   (define char (rope-char-ref doc pos))
   (when char
     (when (char=? #\newline char)
-      (move-char-left-same-line))))
+      (move-char-left-same-line-impl))))
 
 ;; j
 (define (move-line-down)
@@ -62,7 +76,7 @@
   (define char (rope-char-ref doc pos))
   (when char
     (when (char=? #\newline char)
-      (move-char-left-same-line))))
+      (move-char-left-same-line-impl))))
 
 ;; f(char)
 (define (vim-find-next-char)
