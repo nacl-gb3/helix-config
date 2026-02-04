@@ -350,7 +350,7 @@
     (cond
       [(equal? char #\newline) void]
       ;; Move right n times
-      [(equal? char next-char) (extend-right-n)]
+      [(equal? char next-char) (extend-right-n i)]
       [else (loop (+ i 1) next-char)]))
 
   (define (find-repeat count next-char)
