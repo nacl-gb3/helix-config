@@ -27,21 +27,25 @@
     (unless (equal? #\newline char)
       (helix.static.extend_char_left))))
 
+;; k
+(define (extend-line-up)
+  (helix.static.extend_line_up)
+  (extend-line-up-impl)
+  (when (is-visual-line-mode?)
+    (helix.static.extend_to_line_bounds)))
+
 (define (extend-line-up-impl)
   (define pos (cursor-position))
   (define doc (get-document-as-slice))
   (define char (rope-char-ref doc pos))
   (when char
     (when (char=? #\newline char)
-      (define char-to-left (rope-char-ref doc (- pos 1)))
-      (when char-to-left
-        (unless (char=? #\newline char-to-left)
-          (helix.static.extend_char_left))))))
+      (extend-char-left-same-line))))
 
-;; k
-(define (extend-line-up)
-  (helix.static.extend_line_up)
-  (extend-line-up-impl)
+;; j
+(define (extend-line-down)
+  (helix.static.extend_line_down)
+  (extend-line-down-impl)
   (when (is-visual-line-mode?)
     (helix.static.extend_to_line_bounds)))
 
@@ -51,17 +55,7 @@
   (define char (rope-char-ref doc pos))
   (when char
     (when (char=? #\newline char)
-      (define char-to-left (rope-char-ref doc (- pos 1)))
-      (when char-to-left
-        (unless (char=? #\newline char-to-left)
-          (helix.static.extend_char_left))))))
-
-;; j
-(define (extend-line-down)
-  (helix.static.extend_line_down)
-  (extend-line-down-impl)
-  (when (is-visual-line-mode?)
-    (helix.static.extend_to_line_bounds)))
+      (extend-char-left-same-line))))
 
 ;; w
 (define (vim-extend-next-word-start)

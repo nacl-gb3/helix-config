@@ -38,21 +38,23 @@
     (unless (equal? #\newline char)
       (helix.static.move_char_left))))
 
+;; k
+(define (move-line-up)
+  (helix.static.move_line_up)
+  (move-line-up-impl))
+
 (define (move-line-up-impl)
   (define pos (cursor-position))
   (define doc (get-document-as-slice))
   (define char (rope-char-ref doc pos))
   (when char
     (when (char=? #\newline char)
-      (define char-to-left (rope-char-ref doc (- pos 1)))
-      (when char-to-left
-        (unless (char=? #\newline char-to-left)
-          (helix.static.move_char_left))))))
+      (move-char-left-same-line))))
 
-;; k
-(define (move-line-up)
-  (helix.static.move_line_up)
-  (move-line-up-impl))
+;; j
+(define (move-line-down)
+  (helix.static.move_line_down)
+  (move-line-down-impl))
 
 (define (move-line-down-impl)
   (define pos (cursor-position))
@@ -60,15 +62,7 @@
   (define char (rope-char-ref doc pos))
   (when char
     (when (char=? #\newline char)
-      (define char-to-left (rope-char-ref doc (- pos 1)))
-      (when char-to-left
-        (unless (char=? #\newline char-to-left)
-          (helix.static.move_char_left))))))
-
-;; j
-(define (move-line-down)
-  (helix.static.move_line_down)
-  (move-line-down-impl))
+      (move-char-left-same-line))))
 
 ;; f(char)
 (define (vim-find-next-char)
